@@ -379,6 +379,7 @@ class ReplyTemplate(object):
 		valid_templates = []
 		for tmpl in templates:
 			try:
+				# we should include @username in reply
 				tmpl % ('just for test',)
 				valid_templates.append(tmpl)
 			except:
