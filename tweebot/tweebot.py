@@ -22,6 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+import re
 import time
 import random
 import operator
@@ -245,12 +246,15 @@ class MultiPart(object):
 	'''It's bot blok's container. This class allow to work with
 	several bloks (Selectors, for example) like with single one.
 	The main idea that we can reduce results from every given part
-	using a reduce operator.
+	using a reduce operator. Also you can pass `prepare` function,
+	this function will be used to handle results before they will
+	be reduced.
 
 	For example, filter that allows tweets that match one of the
-	two given filters:
+	two given filters. Filters results will be converted to bool
+	type and than reduced:
 	>> multi_filter = MultiPart(filter1, filter2,
-	...							  reduce_operator=operator.or_)
+	...		reduce_operator=operator.or_, prepare=bool)
 	>> context.start(selector1, multi_filter, payload1)
 	'''
 	@classmethod
@@ -268,9 +272,19 @@ class MultiPart(object):
 	def __init__(self, *parts, **kwargs):
 		self.parts = parts
 		self.reduce_operator = kwargs.get('reduce_operator') or operator.add
+		self.prepare_func = kwargs.get('prepare')
+
+	def prepare(self, result):
+		'''You can override this methos to provide global-level
+		result preprocessing before reduce operation.
+		'''
+		if self.prepare_func:
+			return self.prepare_func(result)
+		return result
 
 	def __call__(self, *args, **kwargs):
-		return reduce(self.reduce_operator, map(lambda p: p(*args, **kwargs), self.parts))
+		handle_results = lambda p: self.prepare(p(*args, **kwargs))
+		return reduce(self.reduce_operator, map(handle_results, self.parts))
 
 
 def SearchQuery(query, limit=100):
@@ -403,3 +417,42 @@ class ReplyTemplate(object):
 		except tweepy.error.TweepError, e:
 			logging.error('%s | %s | %s' % (reply_id, str(e), answer))
 			return False
+
+
+class Condition(object):
+	'''Conditional payload part. Child part (payloads only) will
+	be executed only if this condition is suitable for given
+	context and entity, otherwise `default_result` will be returned.
+	'''
+	def __init__(self, payload_part, default_result=None):
+		self.part = payload_part
+		self.default_result = default_result
+
+	def is_suitable(self, context, entity):
+		'''Override this method to implement specific rule.
+
+		Say for example, child part should be executed for entity
+		with text length == 10. It should look like this:
+
+		def is_suitable(self, ctx, entity):
+			return len(entity.text) == 10
+		'''
+		return True
+
+	def handle(self, context, entity):
+		return self.part(context, entiry)
+
+	def __call__(self, context, entity):
+		if self.is_suitable(cntext, entity):
+			return self.handle(context, entity)
+		return self.default_result
+
+class RegexpCondition(Condition):
+	'''Executes for tweet that matches to given regexp'''
+	def __init__(self, payload_part, regexp, *args, **kwargs):
+		super(RegexpCondition, self).__init__(payload_part, *args, **kwargs)
+		self.regexp = regexp
+
+	def is_suitable(self, context, entity):
+		# note that we are looking w/o any `re` flags
+		return re.search(self.reqexp, entity.text)
