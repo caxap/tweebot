@@ -45,7 +45,8 @@ except ImportError:
 __all__ = [
 	'enable_logging', 'Settings', 'Replies', 'Context', 'MultiPart',
 	'SearchQuery', 'SearchMentions', 'BaseFilter', 'FriendsOnlyFilter',
-	'BadTweetFilter', 'ReplyRetweet', 'ReplyTemplate',]
+	'BadTweetFilter', 'ReplyRetweet', 'ReplyTemplate', 'Condition',
+	'RegexpCondition',]
 
 
 def enable_logging(context):
@@ -440,10 +441,10 @@ class Condition(object):
 		return True
 
 	def handle(self, context, entity):
-		return self.part(context, entiry)
+		return self.part(context, entity)
 
 	def __call__(self, context, entity):
-		if self.is_suitable(cntext, entity):
+		if self.is_suitable(context, entity):
 			return self.handle(context, entity)
 		return self.default_result
 
@@ -455,4 +456,4 @@ class RegexpCondition(Condition):
 
 	def is_suitable(self, context, entity):
 		# note that we are looking w/o any `re` flags
-		return re.search(self.reqexp, entity.text)
+		return re.search(self.regexp, entity.text)
