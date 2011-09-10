@@ -43,8 +43,8 @@ except ImportError:
 
 
 __all__ = [
-	'enable_logging', 'Settings', 'Replies', 'Context', 'MultiPart',
-	'SearchQuery', 'SearchMentions', 'BaseFilter', 'FriendsOnlyFilter',
+	'_author', 'enable_logging', 'Settings', 'Replies', 'Context', 'MultiPart',
+	'SearchQuery', 'SearchMentions', 'BaseFilter', 'UsersFilter',
 	'BadTweetFilter', 'ReplyRetweet', 'ReplyTemplate', 'Condition',
 	'RegexpCondition',]
 
@@ -345,32 +345,51 @@ def BadTweetFilter(context, entity):
 	#	return False
 	return True
 
-class FriendsOnlyFilter(object):
-	'''Filter that allows only tweets from current user's friends'''
-	def __init__(self, reload_every=100, *args, **kwargs):
-		# friends list will be refreshed for every `reload_every` call
+class UsersFilter(object):
+	'''Filter that allows only tweets from specific category of
+	users.
+
+	`allowed_users` - it's list with users ids or accessor function,
+	that applies context and returns list with ids.
+	'''
+	@classmethod
+	def Followers(cls, reload_every=100):
+		'''Followers only filter'''
+		return cls(lambda ctx: ctx.api.followers_ids(), reload_every=reload_every)
+
+	@classmethod
+	def Friends(cls, reload_every=100):
+		'''Friends only filter'''
+		return cls(lambda ctx: ctx.api.friends_ids(), reload_every=reload_every)
+
+	def __init__(self, allowed_users, reload_every=100):
+		# users list will be refreshed for every `reload_every` call
+		self.allowed_users = allowed_users
 		self.reload_every = reload_every
-		self.friends = None
 		self.was_error = False
 		self._calls = 0 # current num. of calls
+		self._users = None
 
-	def relaod_friends(self, context):
+	def relaod_users(self, context):
 		try:
-			self.friends = context.api.friends_ids()
+			if callable(self.allowed_users):
+				self._users = self.allowed_users(context)
+			else:
+				self._users = self.allowed_users
 			self.was_error = False
-		except tweepy.error.TweepError, e:
+		except Exception, e:
 			logging.warning(str(e))
 			self.was_error = True
 
 	def __call__(self, context, entity):
 		self._calls += 1
 		need_reload = self._calls >= self.reload_every
-		if self.friends is None or need_reload or self.was_error:
-			self.relaod_friends(context)
+		if self._users is None or need_reload or self.was_error:
+			self.relaod_users(context)
 			if need_reload:
 				self._calls = 0
 		_, author_id = _author(entity, details=True, default=(0,0))
-		return self.friends and author_id in self.friends
+		return self._users and author_id in self._users
 
 
 def ReplyRetweet(context, entity):
