@@ -24,6 +24,7 @@
 #
 import tweebot
 
+
 TEMPLATES = [
 'Have a good day @%s!',
 'Well done @%s!',
@@ -40,7 +41,7 @@ TEMPLATES = [
 'How are you @%s?',
 ]
 
-class ComplementorBot(tweebot.Context):
+class Complementor(tweebot.Context):
 	def __init__(self, *args, **kwargs):
 		settings = {
 			'app_name'       : 'complementor',
@@ -52,18 +53,20 @@ class ComplementorBot(tweebot.Context):
 			'timeout'        : 30 * 60, # 30 min
 			'history_file'   : 'complementor.history'
 		}
-		super(ComplementorBot, self).__init__(settings)
+		super(Complementor, self).__init__(settings)
 
 def main():
-	bot = ComplementorBot()
+	bot = Complementor()
 	tweebot.enable_logging(bot)
 	bot.start_forever(
 		tweebot.MultiPart.Add(
 			tweebot.SearchMentions(),
-			tweebot.SearchQuery('complementor', limit=100)),
+			tweebot.SearchQuery('complementor')),
 		tweebot.MultiPart.And(
 			tweebot.BaseFilter,
-			tweebot.FriendsOnlyFilter(reload_every=100)),
+			tweebot.MultiPart.Or(
+				tweebot.UsersFilter.Friends(),
+				tweebot.UsersFilter.Followers())),
 		tweebot.ReplyTemplate(TEMPLATES))
 
 if __name__ == '__main__':

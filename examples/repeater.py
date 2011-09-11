@@ -25,7 +25,7 @@
 import tweebot
 
 
-class RepeaterBot(tweebot.Context):
+class Repeater(tweebot.Context):
 	def __init__(self, *args, **kwargs):
 		settings = {
 			'app_name'             : 'repeater',
@@ -40,16 +40,16 @@ class RepeaterBot(tweebot.Context):
 			'log_file_max_size'    : 1024 * 1024 * 10,
 			'log_file_num_backups' : 5,
 		}
-		super(RepeaterBot, self).__init__(settings)
+		super(Repeater, self).__init__(settings)
 
 def main():
-	bot = RepeaterBot()
+	bot = Repeater()
 	tweebot.enable_logging(bot)
 	bot.start_forever(
 		tweebot.SearchMentions(),
 		tweebot.MultiPart.And(
 			tweebot.BaseFilter,
-			tweebot.FriendsOnlyFilter(reload_every=100),
+			tweebot.UsersFilter.Friends(reload_every=100),
 			tweebot.BadTweetFilter),
 		tweebot.ReplyRetweet)
 
