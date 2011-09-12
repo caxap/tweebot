@@ -7,10 +7,10 @@ Version: 1.0 alpha
 Base classes:
 	- Context
 	- Settings
-	- Replies (history)
+	- History
 	- Selectors
 	- Filters
-	- Payloads
+	- Payloads(+Conditions)
 
 Bug tracker: http://github.com/caxap/tweebot/issues
 

@@ -43,7 +43,7 @@ except ImportError:
 
 
 __all__ = [
-	'_author', 'enable_logging', 'Settings', 'Replies', 'Context', 'MultiPart',
+	'_author', 'enable_logging', 'Settings', 'History', 'Context', 'MultiPart',
 	'SearchQuery', 'SearchMentions', 'BaseFilter', 'UsersFilter',
 	'BadTweetFilter', 'ReplyRetweet', 'ReplyTemplate', 'Condition',
 	'RegexpCondition',]
@@ -83,13 +83,16 @@ def _author(entity, details=False, default=None):
 	If `details` set to True will return tuple (name, id) otherwise
 	will return only name.
 	'''
-	# check for `status` Model
+	# check for `Status` Model
 	if hasattr(entity, 'author'):
 		a = entity.author
 		return details and (a.screen_name, a.id) or a.screen_name
-	# else check for `search result` Model
+	# else check for `SearchResult` Model
 	if hasattr(entity, 'from_user'):
 		return details and (entity.from_user, entity.from_user_id) or entity.from_user
+	# else check for `User` model
+	if hasattr(entity, 'screen_name'):
+		return details and (entity.screen_name, entity.id) or entity.screen_name
 	# so, use default
 	return default
 
@@ -152,7 +155,7 @@ class Settings(dict):
 		return '<Settings %s>' % dict.__repr__(self)
 
 
-class Replies(list):
+class History(list):
 	'''Simple history class with python list interface. The history
 	will be saved/loaded to/from text file in JSON format. You can
 	override save()/load() methods to provide other way to persist
@@ -163,7 +166,7 @@ class Replies(list):
 	Also you can `limit` number of ids that will be saved to file.
 	'''
 	def __init__(self, name, auto_load=True, limit=None):
-		super(Replies, self).__init__()
+		super(History, self).__init__()
 		self.name = name
 		self.limit = limit
 		if auto_load:
@@ -219,7 +222,7 @@ class Context(object):
 	def get_history(self, auto_load=True, limit=None):
 		'''Returns configured history object.'''
 		if not hasattr(self, '_history'):
-			self._history = Replies(self.settings.history_file, auto_load=auto_load, limit=limit)
+			self._history = History(self.settings.history_file, auto_load=auto_load, limit=limit)
 		return self._history
 	history = property(get_history)
 
@@ -423,19 +426,22 @@ class ReplyTemplate(object):
 	def __init__(self, templates):
 		self.templates = self.validate_templates(templates)
 
-	def reply_template(self, context, entity):
+	def render_template(self, context, entity):
 		return random.choice(self.templates) % _author(entity)
+
+	def reply(self, context, reply_id, text):
+		return context.api.update_status(text, reply_id)
 
 	def __call__(self, context, entity):
 		reply_id = entity.id
-		answer = self.reply_template(context, entity)
+		text = self.render_template(context, entity)
 		try:
-			result = context.api.update_status(answer, reply_id)
+			result = self.reply(context, reply_id, text)
 			context.history.append(reply_id)
-			logging.info('%s | Reply: %s' % (reply_id, answer))
+			logging.info('%s | Reply: %s' % (reply_id, text))
 			return result
 		except tweepy.error.TweepError, e:
-			logging.error('%s | %s | %s' % (reply_id, str(e), answer))
+			logging.error('%s | %s | %s' % (reply_id, str(e), text))
 			return False
 
 
