@@ -4,11 +4,26 @@
 # Copyright (c) 2011 Maxim Kamenkov
 import time
 import random
+import operator
 import unittest
 import tweebot
 
-class SettingsTests(unittest.TestCase):
+# Some helpful utilitest
+True_ = lambda *a, **kw: True
+False_ = lambda *a, **kw: False
+OneTwo = lambda *a, **kw: [1,2]
+ThreeFour = lambda *a, **kw: [3,4]
 
+class AttrProxy(dict):
+	def __getattr__(self, key):
+		try:
+			return self[key]
+		except KeyError, ex:
+			raise AttributeError, ex
+
+
+class SettingsTests(unittest.TestCase):
+	'''Test tweebot.Settings class'''
 	def setUp(self):
 		self.settings = tweebot.Settings({'a':1, 'b':2, 'c':3}, parent_settings={'c':4, 'd':5})
 
@@ -46,6 +61,34 @@ class SettingsTests(unittest.TestCase):
 		def_sett = self.settings.default_settings()
 		def_sett.logging
 		def_sett.timeout
+
+
+class TestMultiPart(unittest.TestCase):
+	'''Test tweebot.MultiPart class'''
+
+	def test_and(self):
+		part = tweebot.MultiPart.And(True_, False_, True_)
+		self.assertFalse(part())
+
+	def test_or(self):
+		part = tweebot.MultiPart.Or(True_, False_, True_)
+		self.assertTrue(part())
+
+	def test_add(self):
+		part = tweebot.MultiPart.Add(OneTwo, ThreeFour)
+		self.assertEqual(part(), [1,2,3,4])
+
+	def test_prepare(self):
+		#count summary lists size
+		part = tweebot.MultiPart(OneTwo, ThreeFour, prepare=len, reduce_operator=operator.add)
+		self.assertEqual(part(), 4)
+
+	def test_overrideprepare(self):
+		class TestMultiPart(tweebot.MultiPart):
+			def prepare(self, result):
+				return len(result)
+		part = TestMultiPart(OneTwo, ThreeFour, reduce_operator=operator.add)
+		self.assertEqual(part(), 4)
 
 #
 # Other tests comming soon... :)
