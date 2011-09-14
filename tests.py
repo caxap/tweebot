@@ -90,6 +90,27 @@ class TestMultiPart(unittest.TestCase):
 		part = TestMultiPart(OneTwo, ThreeFour, reduce_operator=operator.add)
 		self.assertEqual(part(), 4)
 
+class TestCondition(unittest.TestCase):
+	'''Test tweebot.Condition, tweebot.RegexpCondition classes'''
+	def setUp(self):
+		pass
+
+	def test_condition(self):
+		cond = tweebot.Condition(False_, default_result=1)
+		self.assertFalse(cond(None, None))
+
+	def test_defaultresult(self):
+		class FalseCondition(tweebot.Condition):
+			def is_suitable(self, *a, **kw):
+				return False
+		cond = FalseCondition(False_, default_result=1)
+		self.assertEqual(cond(None, None), 1)
+
+	def test_regepxcondition(self):
+		cond = tweebot.RegexpCondition(False_, r'\d+', default_result=1)
+		self.assertFalse(cond(None, AttrProxy(text="abc123")))
+		self.assertEqual(cond(None, AttrProxy(text="abc")), 1)
+
 #
 # Other tests comming soon... :)
 #
