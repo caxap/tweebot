@@ -21,6 +21,15 @@ class AttrProxy(dict):
 		except KeyError, ex:
 			raise AttributeError, ex
 
+class MockContext(AttrProxy):
+	def __init__(self, settings=None, history=None, api=None):
+		required_attrs = {
+			'settings':  AttrProxy(settings or {}),
+			'history': history or [],
+			'api': AttrProxy(api or {}),
+		}
+		super(MockContext, self).__init__(required_attrs)
+
 
 class SettingsTests(unittest.TestCase):
 	'''Test tweebot.Settings class'''
@@ -90,6 +99,7 @@ class TestMultiPart(unittest.TestCase):
 		part = TestMultiPart(OneTwo, ThreeFour, reduce_operator=operator.add)
 		self.assertEqual(part(), 4)
 
+
 class TestCondition(unittest.TestCase):
 	'''Test tweebot.Condition, tweebot.RegexpCondition classes'''
 	def setUp(self):
@@ -110,6 +120,105 @@ class TestCondition(unittest.TestCase):
 		cond = tweebot.RegexpCondition(False_, r'\d+', default_result=1)
 		self.assertFalse(cond(None, AttrProxy(text="abc123")))
 		self.assertEqual(cond(None, AttrProxy(text="abc")), 1)
+
+
+class TestBaseFilter(unittest.TestCase):
+	'''Test tweebot.BaseFilter class'''
+	def setUp(self):
+		settings = {'username': 'user1', 'blocked_users': ['user2', 'user3',],}
+		history = [1, 2, 3,]
+		self.context = MockContext(settings=settings, history=history)
+
+	def test_myname(self):
+		entity1 = AttrProxy(id=0, screen_name='user1')
+		self.assertFalse(tweebot.BaseFilter(self.context, entity1))
+		entity2 = AttrProxy(id=0, screen_name='user0')
+		self.assertTrue(tweebot.BaseFilter(self.context, entity2))
+
+	def test_blockeduser(self):
+		entity1 = AttrProxy(id=0, screen_name='user2')
+		self.assertFalse(tweebot.BaseFilter(self.context, entity1))
+		entity2 = AttrProxy(id=0, screen_name='user3')
+		self.assertFalse(tweebot.BaseFilter(self.context, entity2))
+
+	def test_alreadyreplyed(self):
+		entity = AttrProxy(id=1, screen_name='user0')
+		self.assertFalse(tweebot.BaseFilter(self.context, entity))
+
+class TestBadTweetFilter(unittest.TestCase):
+	'''Test tweebot.BadTweetFilter class'''
+	def setUp(self):
+		settings = {'blocked_words': ['word1', 'word2',],}
+		self.context = MockContext(settings=settings)
+
+	def test_validtweet(self):
+		entity = AttrProxy(id=0, screen_name='user0', text='text')
+		self.assertTrue(tweebot.BadTweetFilter(self.context, entity))
+
+	def test_blockedwords(self):
+		entity = AttrProxy(id=0, screen_name='user0', text='word1 word2')
+		self.assertFalse(tweebot.BadTweetFilter(self.context, entity))
+
+	def test_alotofusernames(self):
+		entity = AttrProxy(id=0, screen_name='user0', text='@user0 @user1')
+		self.assertFalse(tweebot.BadTweetFilter(self.context, entity))
+
+class TestUsersFilter(unittest.TestCase):
+	'''Test tweebot.UsersFilter class'''
+	def setUp(self):
+		api = {'friends_ids': OneTwo, 'followers_ids': OneTwo,}
+		self.context = MockContext(api=api)
+		self.entity_ok = AttrProxy(id=1, screen_name='user0')
+		self.entity_fail = AttrProxy(id=0, screen_name='user0')
+
+	def test_validuser(self):
+		filter_ = tweebot.UsersFilter([1,2])
+		self.assertTrue(filter_(self.context, self.entity_ok))
+
+	def test_allowedlist(self):
+		filter_ = tweebot.UsersFilter([1,2])
+		self.assertFalse(filter_(self.context, self.entity_fail))
+
+	def test_allowedfunc(self):
+		filter_ = tweebot.UsersFilter(OneTwo)
+		self.assertTrue(filter_(self.context, self.entity_ok))
+		self.assertFalse(filter_(self.context, self.entity_fail))
+
+	def test_followers(self):
+		filter_ = tweebot.UsersFilter.Followers()
+		self.assertTrue(filter_(self.context, self.entity_ok))
+		self.assertFalse(filter_(self.context, self.entity_fail))
+
+	def test_friends(self):
+		filter_ = tweebot.UsersFilter.Friends()
+		self.assertTrue(filter_(self.context, self.entity_ok))
+		self.assertFalse(filter_(self.context, self.entity_fail))
+
+	def test_reloadevery(self):
+		self.rotate = False
+		def allowed(ctx):
+			self.rotate = not self.rotate
+			return self.rotate and [1,] or [0,]
+		filter_ = tweebot.UsersFilter(allowed, reload_every=2)
+		self.assertTrue(filter_(self.context, self.entity_ok))
+		self.assertFalse(filter_(self.context, self.entity_ok))
+		self.assertTrue(filter_(self.context, self.entity_fail))
+		self.assertFalse(filter_(self.context, self.entity_fail))
+
+	def test_reloadwaserror(self):
+		self.rotate = False
+		def allowed(ctx):
+			self.rotate = not self.rotate
+			if self.rotate:
+				return [1,2]
+			raise Exception()
+		filter_ = tweebot.UsersFilter(allowed, reload_every=1)
+		self.assertTrue(filter_(self.context, self.entity_ok))
+		self.assertTrue(filter_(self.context, self.entity_ok))
+		self.assertTrue(filter_.was_error)
+		self.assertFalse(filter_(self.context, self.entity_fail))
+		self.assertFalse(filter_.was_error)
+		self.assertTrue(filter_(self.context, self.entity_ok))
 
 #
 # Other tests comming soon... :)
