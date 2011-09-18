@@ -123,8 +123,8 @@ class Settings(dict):
 				'log_file_max_size'    : 1024 * 1024 * 64,
 				'log_file_num_backups' : 4,
 				'timeout'              : 30 * 60,
-				'bloked_users'         : [],
-				'bloked_words'         : [],
+				'blocked_users'         : [],
+				'blocked_words'         : [],
 			})
 			return cls._default_setttings
 
@@ -323,7 +323,7 @@ def BaseFilter(context, entity):
 	reply_id, reply_to = entity.id, _author(entity)
 	if reply_to == settings.get('username'):
 		return False
-	if reply_to.lower() in settings.get('bloked_users', []):
+	if reply_to.lower() in settings.get('blocked_users', []):
 		return False
 	if reply_id in context.history:
 		return False
@@ -333,12 +333,12 @@ def BaseFilter(context, entity):
 
 def BadTweetFilter(context, entity):
 	'''Filter that excules tweets with invalid content.'''
-	bloked_words = set(context.settings.get('bloked_words', []))
+	blocked_words = set(context.settings.get('blocked_words', []))
 	normalized_tweet = entity.text.lower().strip()
 	tweet_parts = normalized_tweet.split()
 	username_count = normalized_tweet.count('@')
 	# if contains bloked words
-	if bloked_words & set(tweet_parts):
+	if blocked_words & set(tweet_parts):
 		return False
 	# if contains more usernames than words
 	if username_count >= len(tweet_parts) - username_count:
