@@ -15,7 +15,7 @@ Example
 import tweebot as twb
 
 def main():
-	# Ster 1. setup context configuration
+	# Step 1. setup context configuration
 	repeater = twb.Context({
 		'app_name'        : 'repeater',
 		'username'        : '<YOUR ACCOUNT NAME>',
@@ -27,7 +27,7 @@ def main():
 		'history_file'    : 'history.json',
 	})
 
-	# Ster 2. enable pretty logging
+	# Step 2. enable pretty logging
 	twb.enable_logging(repeater)
 
 	# Step 3. setup chain Selector->Filters->Action
