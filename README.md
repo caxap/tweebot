@@ -1,13 +1,13 @@
-﻿TweeBot v1.0
-==============
-
+TweeBot v1.0
+============
 A Python library to build twitter bots over tweepy library. It's a very simple 
 and flexible way to create your own bot.
 
 
 Example
-==============
+=======
 
+```python
 # Next code demonstrates how to create simple twitter bot that select all friends'
 # tweets with your mentiones and retweet they. (See comments in code for more 
 # details about how filters work.)
@@ -15,8 +15,8 @@ Example
 import tweebot as twb
 
 def main():
-	# Step 1. setup context configuration
-	repeater = twb.Context({
+    # Step 1. setup context configuration
+    repeater = twb.Context({
 		'app_name'        : 'repeater',
 		'username'        : '<YOUR ACCOUNT NAME>',
 		'consumer_key'    : '<YOUR CONSUMER KEY>',
@@ -44,16 +44,14 @@ def main():
 
 if __name__ == '__main__':
 	main()
-
+```
 
 Other
-==============
+=====
 
-Bug tracker: http://github.com/caxap/tweebot/issues
-
-Souce code: http://github.com/caxap/tweebot
-
-Dependencies:
-    Python 2.5 or newer (<3.0)
-    Tweepy <http://github.com/joshthecoder/tweepy>
-    Simplejson <http://undefined.org/python/#simplejson> (Included in python 2.6+)
+* **Bug tracker**: <http://github.com/caxap/tweebot/issues>
+* **Souce code**: <http://github.com/caxap/tweebot>
+* **Dependencies**:
+    - Python 2.5 or newer (<3.0)
+    - Tweepy <http://github.com/joshthecoder/tweepy>
+    - Simplejson <http://undefined.org/python/#simplejson> (Included in python 2.6+)
